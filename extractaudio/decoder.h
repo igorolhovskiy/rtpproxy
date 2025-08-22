@@ -74,13 +74,14 @@ struct decoder_stream {
     double dticks;
     /* FILE *f; */
     int dflags;
+    int force_codec;  /* -1 for auto-detect, otherwise RTP payload type */
 };
 
 #define D_FLAG_NONE      0x0
 #define D_FLAG_NOSYNC    0x1
 #define D_FLAG_ERRFAIL   0x2
 
-void *decoder_new(struct session *, int);
+void *decoder_new(struct session *, int, int);
 int32_t decoder_get(struct decoder_stream *);
 int decode_frame(struct decoder_stream *, int16_t *, unsigned char *,
   unsigned int, unsigned int);

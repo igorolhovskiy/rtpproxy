@@ -50,7 +50,7 @@
 /* static char i[] = "0"; */
 
 void *
-decoder_new(struct session *sp, int dflags)
+decoder_new(struct session *sp, int dflags, int force_codec)
 {
     struct decoder_stream *dp;
 
@@ -73,6 +73,7 @@ decoder_new(struct session *sp, int dflags)
     dp->dticks = 0;
     dp->lpt = RTP_PCMU;
     dp->dflags = dflags;
+    dp->force_codec = force_codec;
     /* dp->f = fopen(i, "w"); */
     /* i[0]++; */
 
@@ -150,8 +151,12 @@ decode_frame(struct decoder_stream *dp, int16_t *obuf, unsigned char *ibuf,
   unsigned int ibytes, unsigned int obytes_max)
 {
     unsigned int obytes;
+    unsigned char codec_pt;
 
-    switch (dp->pp->rpkt->pt) {
+    /* Use forced codec if specified, otherwise use packet payload type */
+    codec_pt = (dp->force_codec != -1) ? dp->force_codec : dp->pp->rpkt->pt;
+
+    switch (codec_pt) {
     case RTP_PCMU:
         if (obytes_max < (ibytes * 2)) {
             ibytes = obytes_max / 2;
@@ -255,8 +260,12 @@ decode_frame(struct decoder_stream *dp, int16_t *obuf, unsigned char *ibuf,
 int
 generate_silence(struct decoder_stream *dp, int16_t *obuf, unsigned int iticks)
 {
+    unsigned char codec_pt;
 
-    switch (dp->lpt) {
+    /* Use forced codec if specified, otherwise use last packet type */
+    codec_pt = (dp->force_codec != -1) ? dp->force_codec : dp->lpt;
+
+    switch (codec_pt) {
     case RTP_PCMU:
     case RTP_PCMA:
     case RTP_G723:

@@ -84,12 +84,14 @@
 #define LOPT_ALICE_CRYPTO 256
 #define LOPT_BOB_CRYPTO   257
 #endif
+#define LOPT_FORCE_CODEC  258
 
 const static struct option longopts[] = {
 #if ENABLE_SRTP || ENABLE_SRTP2
     { "alice-crypto", required_argument, NULL, LOPT_ALICE_CRYPTO },
     { "bob-crypto",   required_argument, NULL, LOPT_BOB_CRYPTO },
 #endif
+    { "force-codec",  required_argument, NULL, LOPT_FORCE_CODEC },
     { NULL,           0,                 NULL, 0 }
 };
 
@@ -101,23 +103,40 @@ const static struct option longopts[] = {
 RTPP_MEMDEB_APP_STATIC;
 #endif
 
-const static char *usage_msg[8] = {
-  "%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-  "usage: extractaudio [-idsne] [-F file_fmt] [-D data_fmt] rdir outfile",
+const static char *usage_msg[9] = {
+  "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+  "usage: extractaudio [-idsne] [-F file_fmt] [-D data_fmt] [--force-codec CODEC] rdir outfile",
   "                    [link1] ... [linkN]",
-  "       extractaudio [-idsne] [-F file_fmt] [-D data_fmt] [-A answer_cap]",
+  "       extractaudio [-idsne] [-F file_fmt] [-D data_fmt] [--force-codec CODEC] [-A answer_cap]",
   "                    [-B originate_cap] [--alice-crypto CSPEC]",
   "                    [--bob-crypto CSPEC] outfile [link1] ... [linkN]",
   "       extractaudio -S [-A answer_cap] [-B originate_cap]",
-  "       extractaudio -S rdir"
+  "       extractaudio -S rdir",
+  "       CODEC: pcmu, pcma, g729, g722, gsm (overrides RTP payload type detection)"
 };
+
+static int
+parse_force_codec(const char *codec_name)
+{
+    if (strcmp(codec_name, "pcmu") == 0 || strcmp(codec_name, "ulaw") == 0)
+        return RTP_PCMU;
+    if (strcmp(codec_name, "pcma") == 0 || strcmp(codec_name, "alaw") == 0)
+        return RTP_PCMA;
+    if (strcmp(codec_name, "g729") == 0)
+        return RTP_G729;
+    if (strcmp(codec_name, "g722") == 0)
+        return RTP_G722;
+    if (strcmp(codec_name, "gsm") == 0)
+        return RTP_GSM;
+    return -1;
+}
 
 static void
 usage(void)
 {
 
     fprintf(stderr, usage_msg[0], usage_msg[1], usage_msg[2], usage_msg[3],
-      usage_msg[4], usage_msg[5], usage_msg[6], usage_msg[7]);
+      usage_msg[4], usage_msg[5], usage_msg[6], usage_msg[7], usage_msg[8]);
     exit(1);
 }
 
@@ -279,6 +298,7 @@ main(int argc, char **argv)
     sync_sample = 0;
     int scanonly = 0;
     int ecode = 0;
+    int force_codec = -1;  /* -1 means auto-detect, otherwise RTP payload type */
 
     while ((ch = getopt_long(argc, argv, "dsSineF:D:A:B:U:", longopts,
       &option_index)) != -1)
@@ -349,6 +369,16 @@ main(int argc, char **argv)
             }
             break;
 #endif
+
+        case LOPT_FORCE_CODEC:
+            force_codec = parse_force_codec(optarg);
+            if (force_codec == -1) {
+                warnx("unknown codec: \"%s\"", optarg);
+                fprintf(stderr, "Supported codecs: pcmu, pcma, g729, g722, gsm\n");
+                ecode = 1;
+                goto done;
+            }
+            break;
 
         case 'S':
             scanonly = 1;
@@ -446,7 +476,7 @@ main(int argc, char **argv)
     }
     MYQ_FOREACH(cnp, &channels) {
         cnp->cp->skip = (cnp->cp->btime - basetime) * 8000;
-        cnp->cp->decoder = decoder_new(&(cnp->cp->session), dflags);
+        cnp->cp->decoder = decoder_new(&(cnp->cp->session), dflags, force_codec);
         if (cnp->cp->decoder == NULL)
             err(1, "decoder_new() failed");
         nch++;
