@@ -20,7 +20,7 @@ extractaudio_BASESOURCES=extractaudio.c decoder.c rtpp_loader.c $(MAINSRCDIR)/rt
   rtpp_scan_adhoc.c rtpp_scan_adhoc.h eaud_adhoc.c eaud_adhoc.h
 extractaudio_SOURCES=$(extractaudio_BASESOURCES) $(MAINSRCDIR)/rtpp_mallocs.c \
   $(MAINSRCDIR)/rtpp_mallocs.h $(MAINSRCDIR)/rtpp_refcnt.c $(MAINSRCDIR)/rtpp_refcnt.h
-extractaudio_LDADD=@LIBS_G729@ @LIBS_GSM@ @LIBS_G722@ @LIBS_SNDFILE@ -lm -lpthread
+extractaudio_LDADD=@LIBS_G729@ @LIBS_GSM@ @LIBS_G722@ @LIBS_OPUS@ @LIBS_SNDFILE@ -lm -lpthread
 extractaudio_CPPFLAGS = -I$(RTPP_AUTOSRC_DIR) -D_BSD_SOURCE
 if BUILD_CRYPTO
 extractaudio_BASESOURCES+=eaud_crypto.c eaud_crypto.h srtp_util.c srtp_util.h

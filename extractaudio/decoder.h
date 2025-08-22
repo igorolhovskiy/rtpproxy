@@ -44,6 +44,9 @@
 #ifdef ENABLE_GSM
 #include "gsm.h"
 #endif
+#ifdef ENABLE_OPUS
+#include <opus/opus.h>
+#endif
 
 #include "rtp.h"
 #include "session.h"
@@ -69,6 +72,9 @@ struct decoder_stream {
 #endif
 #ifdef ENABLE_GSM
     gsm ctx_gsm;
+#endif
+#ifdef ENABLE_OPUS
+    OpusDecoder *opus_ctx;
 #endif
     double stime;
     double dticks;

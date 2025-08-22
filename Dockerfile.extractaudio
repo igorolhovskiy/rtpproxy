@@ -21,6 +21,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     libsndfile1-dev \
     libgsm1-dev \
     libbcg729-dev \
+    libopus-dev \
     ca-certificates \
     curl \
     wget \
@@ -53,7 +54,7 @@ RUN cd extractaudio && \
     echo "Checking linked libraries:" && \
     ldd ./extractaudio && \
     echo "Checking for codec strings:" && \
-    strings ./extractaudio | grep -E "(g729|g722|gsm|force-codec)" && \
+    strings ./extractaudio | grep -E "(g729|g722|gsm|opus|force-codec)" && \
     echo "Testing help output:" && \
     ./extractaudio 2>&1 | head -10
 
@@ -65,6 +66,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     libsndfile1 \
     libgsm1 \
     libbcg729-0 \
+    libopus0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

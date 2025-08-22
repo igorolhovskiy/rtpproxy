@@ -112,7 +112,7 @@ const static char *usage_msg[9] = {
   "                    [--bob-crypto CSPEC] outfile [link1] ... [linkN]",
   "       extractaudio -S [-A answer_cap] [-B originate_cap]",
   "       extractaudio -S rdir",
-  "       CODEC: pcmu, pcma, g729, g722, gsm (overrides RTP payload type detection)"
+  "       CODEC: pcmu, pcma, g729, g722, gsm, opus (overrides RTP payload type detection)"
 };
 
 static int
@@ -128,6 +128,8 @@ parse_force_codec(const char *codec_name)
         return RTP_G722;
     if (strcmp(codec_name, "gsm") == 0)
         return RTP_GSM;
+    if (strcmp(codec_name, "opus") == 0)
+        return RTP_OPUS;
     return -1;
 }
 
@@ -374,7 +376,7 @@ main(int argc, char **argv)
             force_codec = parse_force_codec(optarg);
             if (force_codec == -1) {
                 warnx("unknown codec: \"%s\"", optarg);
-                fprintf(stderr, "Supported codecs: pcmu, pcma, g729, g722, gsm\n");
+                fprintf(stderr, "Supported codecs: pcmu, pcma, g729, g722, gsm, opus\n");
                 ecode = 1;
                 goto done;
             }

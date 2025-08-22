@@ -52,7 +52,8 @@ enum rtp_type {
     RTP_DVI4_22050 = 17,
     RTP_G729 = 18,
     RTP_TSE = 100,
-    RTP_TSE_CISCO = 101
+    RTP_TSE_CISCO = 101,
+    RTP_OPUS = 111
 };
 
 enum rtp_pt_kind {RTP_PTK_AUDIO, RTP_PTK_VIDEO, RTP_PTK_SIGN, RTP_PTK_RES, RTP_PTK_UNK = 0};

@@ -192,6 +192,21 @@ then
    LIBS_GSM="-lgsm"
    AC_DEFINE([ENABLE_GSM], 1, [Define if you have libgsm library installed]))
 fi
+# Opus
+PKG_CHECK_MODULES([OPUS], [opus >= 1.0], [found_libopus=yes], [found_libopus=no])
+if test "$found_libopus" = yes
+then
+  LIBS_OPUS="${OPUS_LIBS}"
+  AC_DEFINE([ENABLE_OPUS], 1, [Define if you have libopus library installed])
+else
+  AC_CHECK_HEADER(opus/opus.h, found_libopus_fallback=yes)
+  if test "$found_libopus_fallback" = yes
+  then
+    AC_CHECK_LIB(opus, opus_decoder_create,
+     LIBS_OPUS="-lopus"
+     AC_DEFINE([ENABLE_OPUS], 1, [Define if you have libopus library installed]))
+  fi
+fi
 
 # G.729
 AC_CHECK_HEADER(g729_encoder.h, found_libg729=yes)
@@ -522,6 +537,7 @@ AM_COND_IF([BUILD_ELPERIODIC], [
 AC_SUBST(AM_CFLAGS)
 AC_SUBST(LIBS_DL)
 AC_SUBST(LIBS_GSM)
+AC_SUBST(LIBS_OPUS)
 AC_SUBST(LIBS_G729)
 AC_SUBST(LIBS_G722)
 AC_SUBST(LIBS_SNDFILE)

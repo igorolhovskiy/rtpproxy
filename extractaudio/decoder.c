@@ -247,6 +247,44 @@ decode_frame(struct decoder_stream *dp, int16_t *obuf, unsigned char *ibuf,
         return obytes;
 #endif
 
+#ifdef ENABLE_OPUS
+    case RTP_OPUS: {
+        int samples_decoded;
+        
+        if (dp->opus_ctx == NULL) {
+            int error;
+            dp->opus_ctx = opus_decoder_create(48000, 1, &error);
+            if (error != OPUS_OK || dp->opus_ctx == NULL) {
+                fprintf(stderr, "can't create Opus decoder: %s\n", opus_strerror(error));
+                return -1;
+            }
+        }
+        
+        /* Opus frames can be variable size, decode to 48kHz then downsample to 8kHz */
+        int16_t opus_buf[960 * 6]; /* Max frame size at 48kHz (120ms) */
+        samples_decoded = opus_decode(dp->opus_ctx, ibuf, ibytes, opus_buf, 960 * 6, 0);
+        
+        if (samples_decoded < 0) {
+            fprintf(stderr, "Opus decode error: %s\n", opus_strerror(samples_decoded));
+            return -1;
+        }
+        
+        /* Simple downsampling from 48kHz to 8kHz (6:1 ratio) */
+        int output_samples = samples_decoded / 6;
+        if (obytes_max < (output_samples * 2)) {
+            output_samples = obytes_max / 2;
+        }
+        
+        for (int i = 0; i < output_samples; i++) {
+            obuf[i] = opus_buf[i * 6]; /* Take every 6th sample */
+        }
+        
+        dp->nticks += output_samples;
+        dp->dticks += output_samples;
+        return output_samples * 2;
+    }
+#endif
+
     case RTP_CN:
     case RTP_TSE:
     case RTP_TSE_CISCO:
@@ -271,6 +309,7 @@ generate_silence(struct decoder_stream *dp, int16_t *obuf, unsigned int iticks)
     case RTP_G723:
     case RTP_G722:
     case RTP_GSM:
+    case RTP_OPUS:
         memset(obuf, 0, iticks * 2);
         return iticks * 2;
 

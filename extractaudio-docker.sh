@@ -70,7 +70,7 @@ show_usage() {
     echo "Usage: $0 [options] <arguments>"
     echo ""
     echo "This script wraps the extractaudio tool in a Docker container with full"
-    echo "codec support (GSM, G.722, G.729) and the --force-codec feature."
+    echo "codec support (GSM, G.722, G.729, Opus) and the --force-codec feature."
     echo ""
     echo "Special options:"
     echo "  --build-image    Force rebuild of Docker image"
@@ -81,7 +81,7 @@ show_usage() {
     echo ""
     echo "Examples:"
     echo "  $0                                    # Show extractaudio help"
-    echo "  $0 --force-codec g729 input output   # Force G.729 decoding"
+    echo "  $0 --force-codec opus input output   # Force Opus decoding"
     echo "  $0 -F wav input output               # Extract as WAV file"
     echo "  $0 --build-image                     # Rebuild Docker image"
     echo ""
@@ -96,7 +96,7 @@ show_info() {
         docker image inspect "$DOCKER_IMAGE" --format '
 Image: {{.RepoTags}}
 Created: {{.Created}}
-Size: {{.Size}} bytes ({{printf "%.1f" (div (mul .Size 1.0) 1048576)}} MB)
+Size: {{.Size}} bytes
 Architecture: {{.Architecture}}
 OS: {{.Os}}
 '
