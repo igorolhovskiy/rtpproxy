@@ -65,28 +65,39 @@ build_image_if_needed() {
 
 # Function to show usage information
 show_usage() {
-    echo "extractaudio-docker.sh - Docker wrapper for extractaudio with full codec support"
+    echo "extractaudio-docker.sh - Enhanced Docker wrapper for extractaudio"
     echo ""
     echo "Usage: $0 [options] <arguments>"
     echo ""
     echo "This script wraps the extractaudio tool in a Docker container with full"
-    echo "codec support (GSM, G.722, G.729, Opus) and the --force-codec feature."
+    echo "codec support (GSM, G.722, G.729, Opus), Linux SLL auto-conversion,"
+    echo "and true stereo extraction from dual RTP streams."
     echo ""
     echo "Special options:"
-    echo "  --build-image    Force rebuild of Docker image"
-    echo "  --show-info      Show Docker image information"
-    echo "  --shell          Open interactive shell in container"
+    echo "  --build-image      Force rebuild of Docker image"
+    echo "  --show-info        Show Docker image information"
+    echo "  --shell            Open interactive shell in container"
+    echo "  --direct           Skip Linux SLL conversion (use original extractaudio)"
+    echo "  --true-stereo      Split RTP streams by SSRC for true stereo (default with -s)"
+    echo "  --mixed-stereo     Use single stream mixed to stereo (legacy mode)"
     echo ""
-    echo "All other arguments are passed directly to extractaudio."
+    echo "Enhanced features:"
+    echo "  • Automatically detects Linux SLL (cooked) PCAP captures"
+    echo "  • Splits RTP streams by SSRC for true stereo extraction"
+    echo "  • Uses extractaudio -A/-B options for separate stereo channels"
+    echo "  • Full codec support with automatic detection"
+    echo "  • Intelligent fallback from true stereo to mixed stereo when needed"
+    echo ""
+    echo "All other arguments are passed to extractaudio."
     echo ""
     echo "Examples:"
-    echo "  $0                                    # Show extractaudio help"
-    echo "  $0 --force-codec opus input output   # Force Opus decoding"
-    echo "  $0 -F wav input output               # Extract as WAV file"
-    echo "  $0 --build-image                     # Rebuild Docker image"
+    echo "  $0 -s -F wav input.pcap stereo.wav       # True stereo from dual RTP streams"
+    echo "  $0 --mixed-stereo -s -F wav input.pcap out.wav  # Mixed stereo (legacy)"
+    echo "  $0 -F wav input.pcap mono.wav            # Extract mono audio"
+    echo "  $0 --direct -F wav input output          # Skip auto-conversion"
+    echo "  $0 --build-image                         # Rebuild Docker image"
     echo ""
-    echo "Note: All file paths should be relative to current directory or absolute paths"
-    echo "      that will be mounted into the container."
+    echo "Note: File paths should be relative to current directory or absolute paths."
 }
 
 # Function to show Docker image info
@@ -176,8 +187,19 @@ run_extractaudio() {
     docker_args+=("-v" "$(pwd):/data")
     docker_args+=("--workdir" "/data")
     
-    # Run the container
-    docker run --rm "${docker_args[@]}" "$DOCKER_IMAGE" "${args[@]}"
+    # Run the container with current user to avoid permission issues
+    # Use wrapper by default for Linux SLL auto-conversion, unless --direct flag is used
+    if [[ " ${args[@]} " =~ " --direct " ]]; then
+        # Remove --direct flag and run extractaudio directly
+        filtered_args=()
+        for arg in "${args[@]}"; do
+            [[ "$arg" != "--direct" ]] && filtered_args+=("$arg")
+        done
+        docker run --rm --user "$(id -u):$(id -g)" "${docker_args[@]}" "$DOCKER_IMAGE" "/usr/local/bin/extractaudio ${filtered_args[*]}"
+    else
+        # Use wrapper script for automatic Linux SLL conversion
+        docker run --rm --user "$(id -u):$(id -g)" "${docker_args[@]}" "$DOCKER_IMAGE" "/usr/local/bin/extractaudio-wrapper.sh ${args[*]}"
+    fi
 }
 
 # Main script execution

@@ -127,7 +127,7 @@ rtpp_load(const char *path)
             return NULL;
         }
         pcap_hdr = (pcap_hdr_t *)rval->ibuf;
-        if (pcap_hdr->network != DLT_EN10MB && pcap_hdr->network != DLT_NULL) {
+        if (pcap_hdr->network != DLT_EN10MB && pcap_hdr->network != DLT_NULL && pcap_hdr->network != DLT_LINUX_SLL) {
             warnx("unsupported data-link type in the PCAP: %d", pcap_hdr->network);
             rval->destroy(rval);
             return NULL;

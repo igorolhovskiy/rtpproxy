@@ -422,10 +422,17 @@ main(int argc, char **argv)
     }
 
     if (aname == NULL && bname == NULL) {
-        sprintf(aname_s, "%s.a.rtp", argv[0]);
-        aname = aname_s;
-        sprintf(bname_s, "%s.o.rtp", argv[0]);
-        bname = bname_s;
+        /* Check if the file has .pcap extension - if so, use it directly for both A and B */
+        size_t len = strlen(argv[0]);
+        if (len > 5 && strcmp(argv[0] + len - 5, ".pcap") == 0) {
+            aname = argv[0];
+            bname = argv[0];
+        } else {
+            sprintf(aname_s, "%s.a.rtp", argv[0]);
+            aname = aname_s;
+            sprintf(bname_s, "%s.o.rtp", argv[0]);
+            bname = bname_s;
+        }
         argv += 1;
         argc -= 1;
     }

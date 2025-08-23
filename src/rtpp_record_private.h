@@ -31,6 +31,7 @@
 
 #define	DLT_NULL	0
 #define	DLT_EN10MB	1
+#define	DLT_LINUX_SLL	113
 #define	PCAP_MAGIC	0xa1b2c3d4
 #define	PCAP_VER_MAJR	2
 #define	PCAP_VER_MINR	4
@@ -86,6 +87,14 @@ struct layer2_hdr {
     uint16_t type;
 } __attribute__((__packed__));
 
+struct linux_sll_hdr {
+    uint16_t packet_type;    /* packet type */
+    uint16_t device_type;    /* device type */
+    uint16_t addr_len;       /* address length */
+    uint8_t  addr[8];        /* address */
+    uint16_t protocol;       /* protocol */
+} __attribute__((__packed__));
+
 /*
  * Recorded data header
  */
@@ -109,12 +118,24 @@ struct pkt_hdr_pcap_en10t_v6 {
     struct layer2_hdr ether;
     struct udpip6 udpip6;
 } __attribute__((__packed__));
+struct pkt_hdr_pcap_linux_sll {
+    pcaprec_hdr_t pcaprec_hdr;
+    struct linux_sll_hdr sll;
+    struct udpip udpip;
+} __attribute__((__packed__));
+struct pkt_hdr_pcap_linux_sll_v6 {
+    pcaprec_hdr_t pcaprec_hdr;
+    struct linux_sll_hdr sll;
+    struct udpip6 udpip6;
+} __attribute__((__packed__));
 
 union pkt_hdr_pcap {
     struct pkt_hdr_pcap_null null;
     struct pkt_hdr_pcap_null_v6 null_v6;
     struct pkt_hdr_pcap_en10t en10t;
     struct pkt_hdr_pcap_en10t_v6 en10t_v6;
+    struct pkt_hdr_pcap_linux_sll linux_sll;
+    struct pkt_hdr_pcap_linux_sll_v6 linux_sll_v6;
 };
 
 #endif

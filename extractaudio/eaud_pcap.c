@@ -36,6 +36,7 @@
 #include <netinet/ip6.h>
 #include <netinet/udp.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <string.h>
 
 #include "rtpp_record_private.h"
@@ -74,6 +75,27 @@ eaud_pcap_dissect(unsigned char *bp, size_t blen, int network,
         memcpy(&dp->pcaprec_hdr, &pcp->null.pcaprec_hdr, sizeof(pcaprec_hdr_t));
         dp->pcap_hdr_len = sizeof(struct pkt_hdr_pcap_null);
         dp->udpip = &(pcp->null.udpip);
+    } else if (network == DLT_LINUX_SLL) {
+        uint16_t protocol;
+        unsigned char *linux_sll_data;
+        size_t linux_sll_hdr_size = sizeof(struct linux_sll_hdr);
+
+        if (blen < sizeof(pcaprec_hdr_t) + linux_sll_hdr_size) {
+            return (PCP_DSCT_TRNK);
+        }
+        
+        linux_sll_data = bp + sizeof(pcaprec_hdr_t);
+        memcpy(&protocol, linux_sll_data + offsetof(struct linux_sll_hdr, protocol), sizeof(protocol));
+        protocol = ntohs(protocol); /* Convert from network byte order */
+        memcpy(&incl_len, bp + offsetof(pcaprec_hdr_t, incl_len), sizeof(incl_len));
+        
+        if (protocol != 0x0800) { /* ETHERTYPE_IP in host byte order */
+            dp->pcap_hdr_len = sizeof(pcaprec_hdr_t) + incl_len;
+            return (PCP_DSCT_UNKN);
+        }
+        memcpy(&dp->pcaprec_hdr, bp, sizeof(pcaprec_hdr_t));
+        dp->pcap_hdr_len = sizeof(pcaprec_hdr_t) + linux_sll_hdr_size;
+        dp->udpip = (struct udpip *)(linux_sll_data + linux_sll_hdr_size);
     } else {
         uint16_t ether_type;
 
@@ -94,10 +116,37 @@ eaud_pcap_dissect(unsigned char *bp, size_t blen, int network,
     if (dp->l5_len < 0) {
         return (PCP_DSCT_TRNK);
     }
-    dp->l5_data = (unsigned char *)(dp->udpip + 1);
-    dp->src = &dp->udpip->iphdr.ip_src;
-    dp->sport = ntohsp((void *)&dp->udpip->udphdr.uh_sport);
-    dp->dst = &dp->udpip->iphdr.ip_dst;
-    dp->dport = ntohsp((void *)&dp->udpip->udphdr.uh_dport);
+    
+    /* Calculate RTP data offset and extract network info */
+    if (network == DLT_LINUX_SLL) {
+        /* For Linux SLL, dp->udpip points to the start of the IP header in the packet */
+        struct ip *iphdr = (struct ip *)dp->udpip;
+        struct udphdr *udphdr;
+        unsigned int ip_hdr_len = iphdr->ip_hl * 4;  /* IP header length in bytes */
+        
+        /* Verify we have enough data for IP and UDP headers */
+        if (dp->l5_len < (int)(ip_hdr_len + sizeof(struct udphdr))) {
+            return (PCP_DSCT_TRNK);
+        }
+        
+        /* UDP header follows immediately after variable-length IP header */
+        udphdr = (struct udphdr *)((unsigned char *)iphdr + ip_hdr_len);
+        
+        /* RTP payload starts after UDP header */
+        dp->l5_data = (unsigned char *)udphdr + sizeof(struct udphdr);
+        dp->l5_len -= (ip_hdr_len + sizeof(struct udphdr));
+        
+        /* Extract addresses and ports directly from the packet headers */
+        dp->src = &iphdr->ip_src;
+        dp->dst = &iphdr->ip_dst;
+        dp->sport = ntohs(udphdr->uh_sport);
+        dp->dport = ntohs(udphdr->uh_dport);
+    } else {
+        dp->l5_data = (unsigned char *)(dp->udpip + 1);
+        dp->src = &dp->udpip->iphdr.ip_src;
+        dp->sport = ntohsp((void *)&dp->udpip->udphdr.uh_sport);
+        dp->dst = &dp->udpip->iphdr.ip_dst;
+        dp->dport = ntohsp((void *)&dp->udpip->udphdr.uh_dport);
+    }
     return (PCP_DSCT_OK);
 }
