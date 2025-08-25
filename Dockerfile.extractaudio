@@ -1,7 +1,7 @@
 # Dockerfile for RTPproxy extractaudio tool with full codec support
 FROM debian:bookworm-slim AS build
 
-LABEL maintainer="Ihor Olkhovskyi w/assistance"
+LABEL maintainer="Ihor Olkhovskyi <ihor.olkhovskyi@cern.ch> w/assistance"
 LABEL description="RTPproxy extractaudio tool with full codec support (GSM, G.722, G.729)"
 
 # Set environment variables

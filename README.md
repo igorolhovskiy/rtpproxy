@@ -1,106 +1,132 @@
-[![RTPProxy CI](https://github.com/sippy/rtpproxy/actions/workflows/rtpproxy_ci.yml/badge.svg?branch=master)](https://github.com/sippy/rtpproxy/actions/workflows/rtpproxy_ci.yml?query=branch%3Amaster++)
-[![Coverage Status](https://coveralls.io/repos/github/sippy/rtpproxy/badge.svg?branch=master)](https://coveralls.io/github/sippy/rtpproxy?branch=master)
-[![Coverity](https://scan.coverity.com/projects/8841/badge.svg)](https://scan.coverity.com/projects/sippy-rtpproxy)
+Important note: this is a fork of original [`RTPProxy`](https://github.com/sippy/rtpproxy) tool focused exclusively on `extractaudio` tool.</br>
+These modifications were mostly vibe-coded mainly to quickly serve one task - extract audio from `pcap` files produced by [`sngrep`](https://github.com/irontec/sngrep) utility with possibility to force the output codec.
 
-## About
+# ExtractAudio Tool
 
-The RTPproxy is a extremely reliable and reasonably high-performance software
-proxy for RTP streams that can work together with [OpenSIPS](https://opensips.org),
-[Kamailio](https://kamailio.org) or [Sippy B2BUA](https://github.com/sippy/b2bua).
+A powerful Docker-based audio extraction tool for RTP streams from PCAP files, rtpproxy recordings, and RTP stream data.
 
-Originally created for handling NAT scenarios, back in 2004-2005, it can also act
-as a generic real time datagram relay as well as gateway Real-Time Protocol (RTP)
-sessions between IPv4 and IPv6 networks.
+## Overview
 
-The RTPproxy supports many advanced features and is controllable over
-multitude of Layer 4 protocols, including Unix Domain, UDP, UDPv6, TCP and TCPv6.
+The `extractaudio-docker.sh` tool provides enhanced audio extraction capabilities with:
+- Automatic Docker image building and management
+- Support for multiple audio formats and codecs
+- Linux SLL format PCAP conversion
+- True stereo extraction from dual RTP streams
+- SRTP encrypted stream support (when compiled with libsrtp)
 
-The software allows building scalable distributed SIP networks. The rtpproxy module
-included into the OpenSIPS or Kamailio SIP Proxy software allows using multiple
-RTPproxy instances running on remote machines for fault-tolerance and
-load-balancing purposes.
+## Building
 
-Advanced high-capacity clustering and load balancing is available through the
-use of [RTP Cluster](https://github.com/sippy/rtp_cluster) middleware.
+The tool automatically builds the required Docker image on first use. To manually build:
 
-The software also supports MOH/pre-recorded media injection,  video relaying
-and session recording to a local file or remote UDP listener(s). As well
-as makes available array of real-time or near real-time session counters,
-both per-session and per-instance.
-
-Since version 3.1.0, full set of extensions is available allowing to create
-a WebRTC-compatible endpoints.
-
-## News
-
-- introducing WebRTC/WSS clients support via 3 new modules: dtls_gw, ice_lite
-  and rtcp_demux.
-
-## How it works
-
-This proxy works as follows:
-
-- When SIP Controller, either proxy or B2BUA, receives INVITE request, it
-  extracts call-id from it and communicates it to the proxy via control
-  channel. Proxy looks for an existing sessions with such id, if the session
-  exists it returns UDP port for that session, if not, then it creates a new
-  session, binds to a first available randomly selected pair of UDP ports and
-  returns number of the first port. After receiving reply from the proxy, SIP
-  Controller replaces media ip:port in the SDP to point to the proxy and
-  forwards request as usually;
-
-- when SIP Controller receives non-negative SIP reply with SDP it again
-  extracts call-id along with session tags from it and communicates it to
-  the proxy. In this case the proxy does not allocate a new session if it
-  doesn't exist, but simply performs a lookup among existing sessions and
-  returns either a port number if the session is found, or error code
-  indicating that there is no session with such id. After receiving positive
-  reply from the proxy, SIP Controller replaces media ip:port in the SIP
-  reply to point to the proxy and forwards reply as usually;
-
-- after the session has been created, the proxy listens on the port it has
-  allocated for that session and waits for receiving at least one UDP
-  packet from each of two parties participating in the call. Once such
-  packet is received, the proxy fills one of two ip:port structures
-  associated with each call with source ip:port of that packet. When both
-  structures are filled in, the proxy starts relaying UDP packets between
-  parties;
-
-- the proxy tracks idle time for each of existing sessions (i.e. the time
-  within which there were no packets relayed), and automatically cleans
-  up a sessions whose idle times exceed the value specified at compile
-  time (60 seconds by default).
-
-## Building from github
-
-```
-$ git clone -b master https://github.com/sippy/rtpproxy.git
-$ git -C rtpproxy submodule update --init --recursive
-$ cd rtpproxy
-$ ./configure
-$ make
+```bash
+./extractaudio-docker.sh --build-image
 ```
 
-## Authors and Contributors
+## Usage
 
-The RTPproxy has been designed by Maxim Sobolev and now is being actively
-maintained by the [Sippy Software, Inc](http://www.sippysoft.com). With the
-great help of numerous community contributors, both private and institutional.
-Not to mention army of robots gracefully dispatched at need by CI.
+Basic syntax:
+```bash
+./extractaudio-docker.sh [wrapper options] [extractaudio options] input_file output_file
+```
 
-The original idea has inspired and directly influenced multitude of independent
-implementations, including but not limited to the
-[Mediaproxy](https://mediaproxy.com),
-[erlrtpproxy](https://github.com/lemenkov/erlrtpproxy), and most recently
-[RTP Engine](https://github.com/sipwise/rtpengine), each project focusing on
-its own area of the vast functionality space.
+### Docker Wrapper Options
 
-## Documentation and References
+- `--build-image` - Force rebuild of Docker image
+- `--show-info` - Show Docker image information and codec support
+- `--shell` - Open interactive shell in container
+- `--direct` - Skip Linux SLL conversion (use original extractaudio)
+- `--true-stereo` - Split RTP streams by SSRC for true stereo (default with -s)
+- `--mixed-stereo` - Use single stream mixed to stereo (legacy mode)
 
-- [User Manual](https://www.rtpproxy.org/doc/master/user_manual.html#MAKESRC);
-- [RTPproxy Control Protocol Reference](https://github.com/sippy/rtpproxy/wiki/RTPProxy-Command-Protocol).
+### Audio Extraction Options
 
-## Feedback & Support
+- `-d` - Delete input files after processing
+- `-s` - Enable stereo output (2 channels)
+- `-i` - Set idle priority for processing
+- `-n` - Disable synchronization (nosync mode)
+- `-e` - Fail on decoder errors instead of continuing
+- `-S` - Scan mode - analyze files without extracting audio
 
-Open a ticket on the github issue tracker, or post a message on the [mailing
-list](https://groups.google.com/forum/#!forum/rtpproxy)
+- `-F FORMAT` - Output file format (wav, aiff, flac, ogg, etc.)
+- `-D FORMAT` - Output data format (pcm_16, pcm_24, float, etc.)
+- `-A FILE` - Answer channel capture file
+- `-B FILE` - Originate channel capture file
+
+### SRTP Options (if compiled with SRTP support)
+
+- `--alice-crypto CSPEC` - Crypto specification for Alice (answer) channel
+- `--bob-crypto CSPEC` - Crypto specification for Bob (originate) channel
+
+CSPEC format: `suite:key[:salt]`
+
+### Examples
+
+Basic mono extraction:
+```bash
+./extractaudio-docker.sh -F wav call.pcap output.wav
+```
+
+True stereo from dual RTP streams:
+```bash
+./extractaudio-docker.sh -s -F wav call.pcap stereo_output.wav
+```
+
+Separate channel files:
+```bash
+./extractaudio-docker.sh -A answer.pcap -B originate.pcap -s output.wav
+```
+
+High-quality PCM output:
+```bash
+./extractaudio-docker.sh -F wav -D pcm_16 call.pcap hq_output.wav
+```
+
+FLAC lossless compression:
+```bash
+./extractaudio-docker.sh -F flac -D pcm_24 call.pcap lossless.flac
+```
+
+Scan mode (analyze without extraction):
+```bash
+./extractaudio-docker.sh -S call.pcap
+```
+
+## Supported Formats
+
+### Input Formats
+- PCAP files (.pcap extension)
+- Linux SLL format (automatically converted)
+- rtpproxy recording directories (rdir.a.rtp, rdir.o.rtp)
+- Individual RTP stream files
+
+### Supported Codecs
+- G.711 μ-law (PCMU) - payload type 0
+- G.711 A-law (PCMA) - payload type 8
+- G.729 - payload type 18
+- G.722 - payload type 9
+- GSM - payload type 3
+- Opus - dynamic payload types
+
+### Output Formats
+- WAV, AIFF, AU, RAW, PAF, SVX, NIST, VOC
+- IRCAM, W64, MAT4, MAT5, PVF, XI, HTK
+- SDS, AVR, WAVEX, SD2, FLAC, CAF, WVE
+- OGG, MPC2K, RF64
+
+## Requirements
+
+- Docker must be installed and accessible
+- First run may take several minutes to build the image
+- File paths are automatically mounted into the container
+
+## Getting Help
+
+For detailed options and examples:
+```bash
+./extractaudio-docker.sh --help
+```
+
+For Docker image information:
+```bash
+./extractaudio-docker.sh --show-info
+```
